@@ -30,9 +30,10 @@ interface MealRequestTabProps {
   people: Person[];
   jobs: Job[];
   timeEntries: TimeEntry[];
+  onGenerateEntries: (entries: TimeEntry[]) => void;
 }
 
-const MealRequestTab = ({ people, jobs, timeEntries }: MealRequestTabProps) => {
+const MealRequestTab = ({ people, jobs, timeEntries, onGenerateEntries }: MealRequestTabProps) => {
   const [selectedJob, setSelectedJob] = useState("");
   const [requests, setRequests] = useState<MealRequest[]>([]);
   const [currentPerson, setCurrentPerson] = useState("");
@@ -172,6 +173,28 @@ const MealRequestTab = ({ people, jobs, timeEntries }: MealRequestTabProps) => {
     ];
 
     XLSX.utils.book_append_sheet(wb, ws2, "Registro de Horas");
+
+    // Generate time entries in the app
+    const newEntries: TimeEntry[] = [];
+    requests.forEach((req) => {
+      const dates = getDatesInRange(req.startDate, req.endDate);
+      dates.forEach((date) => {
+        const exists = timeEntries.some(
+          (e) => e.personId === req.personId && e.date === date
+        );
+        if (!exists) {
+          newEntries.push({
+            id: crypto.randomUUID(),
+            personId: req.personId,
+            date,
+            entry1: "", exit1: "",
+            entry2: "", exit2: "",
+            entry3: "", exit3: "",
+          });
+        }
+      });
+    });
+    if (newEntries.length > 0) onGenerateEntries(newEntries);
 
     // Download
     const safeName = jobName.replace(/[^a-zA-Z0-9\-_ ]/g, "").trim();
