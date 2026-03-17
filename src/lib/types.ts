@@ -6,6 +6,7 @@ export interface Person {
 export interface TimeEntry {
   id: string;
   personId: string;
+  jobId: string;
   date: string; // YYYY-MM-DD
   entry1: string; // HH:mm
   exit1: string;
