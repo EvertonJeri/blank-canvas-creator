@@ -33,7 +33,7 @@ interface MealRequestTabProps {
   onGenerateEntries: (entries: TimeEntry[]) => void;
 }
 
-const MealRequestTab = ({ people, jobs, timeEntries }: MealRequestTabProps) => {
+const MealRequestTab = ({ people, jobs, timeEntries, onGenerateEntries }: MealRequestTabProps) => {
   const [selectedJob, setSelectedJob] = useState("");
   const [requests, setRequests] = useState<MealRequest[]>([]);
   const [currentPerson, setCurrentPerson] = useState("");
