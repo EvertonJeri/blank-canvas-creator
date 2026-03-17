@@ -30,6 +30,7 @@ interface MealRequestTabProps {
   people: Person[];
   jobs: Job[];
   timeEntries: TimeEntry[];
+  onGenerateEntries: (entries: TimeEntry[]) => void;
 }
 
 const MealRequestTab = ({ people, jobs, timeEntries }: MealRequestTabProps) => {
