@@ -31,6 +31,7 @@ export interface MealRequest {
   location?: LocationType;
   transportType?: "onibus" | "aviao";
   travelTime?: string; // HH:mm
+  dailyOverrides?: Record<string, MealType[]>;
 }
 
 export interface FoodControlEntry {

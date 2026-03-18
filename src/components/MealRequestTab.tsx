@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Download, Plus, X, ClipboardList, Mail } from "lucide-react";
+import { CalendarIcon, Download, Plus, X, ClipboardList, Mail, ChevronDown, ChevronRight } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -42,6 +42,37 @@ const MealRequestTab = ({ people, jobs, timeEntries, requests, setRequests, onGe
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [selectedLocation, setSelectedLocation] = useState<LocationType | "">("");
+  const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
+
+  const toggleRequest = (id: string) => {
+    setExpandedRequests((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const setDailyOverride = (reqId: string, date: string, meal: MealType, checked: boolean) => {
+    setRequests(prev => prev.map(req => {
+      if (req.id !== reqId) return req;
+      
+      const currentOverrides = req.dailyOverrides || {};
+      const dayMeals = currentOverrides[date] !== undefined ? currentOverrides[date] : req.meals;
+      
+      const newDayMeals = checked 
+        ? [...dayMeals, meal]
+        : dayMeals.filter(m => m !== meal);
+        
+      return {
+        ...req,
+        dailyOverrides: {
+          ...currentOverrides,
+          [date]: newDayMeals
+        }
+      };
+    }));
+  };
 
   const toggleMeal = (meal: MealType) => {
     setCurrentMeals((prev) =>
@@ -109,7 +140,7 @@ const MealRequestTab = ({ people, jobs, timeEntries, requests, setRequests, onGe
       ["Pessoa", "Estado", "Refeições", "Data Início", "Data Fim", "Dias", "Valor Unitário (R$)", "Valor Total (R$)"],
     ];
 
-    let grandTotal = 0;
+      let grandTotal = 0;
     jobRequests2.forEach((req) => {
       let total = 0;
       const person = people.find((p) => p.id === req.personId);
@@ -118,17 +149,16 @@ const MealRequestTab = ({ people, jobs, timeEntries, requests, setRequests, onGe
       const days = dates.length;
       
       dates.forEach(date => {
-        req.meals.forEach(m => {
+        const dayMeals = req.dailyOverrides && req.dailyOverrides[date] !== undefined ? req.dailyOverrides[date] : req.meals;
+        dayMeals.forEach(m => {
           total += getMealValue(m, date, person);
         });
       });
 
       grandTotal += total;
-      const meals = req.meals.map((m) => MEAL_LABELS[m]).join(", ");
-      const stateLabel = req.location || "";
-      // we show average daily value in exported report or omit it to keep it simple, let's omit the generic dailyValue 
-      // since it varies by day
-      mealRows.push([personName, stateLabel, meals, req.startDate.split("-").reverse().join("/"), req.endDate.split("-").reverse().join("/"), days, (total/days).toFixed(2), total.toFixed(2)]);
+      const baseMeals = req.meals.map((m) => MEAL_LABELS[m]).join(", ");
+      const statesLabel = req.location || "";
+      mealRows.push([personName, statesLabel, baseMeals, req.startDate.split("-").reverse().join("/"), req.endDate.split("-").reverse().join("/"), days, (total/days).toFixed(2), total.toFixed(2)]);
     });
 
     mealRows.push([]);
@@ -307,37 +337,88 @@ const MealRequestTab = ({ people, jobs, timeEntries, requests, setRequests, onGe
                 const days = dates.length;
                 let total = 0;
                 dates.forEach(date => {
-                  req.meals.forEach(m => {
+                  const dayMeals = req.dailyOverrides && req.dailyOverrides[date] !== undefined ? req.dailyOverrides[date] : req.meals;
+                  dayMeals.forEach(m => {
                     total += getMealValue(m, date, person);
                   });
                 });
                 
                 const stateLabel = req.location || "—";
+                const isExpanded = expandedRequests.has(req.id);
+
                 return (
-                  <tr key={req.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-3 py-2 font-medium text-foreground">{getPersonName(req.personId)}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{getJobName(req.jobId)}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{stateLabel}</td>
-                    <td className="px-3 py-2">
-                      <div className="flex gap-1 flex-wrap">
-                        {req.meals.map((m) => (
-                          <Badge key={m} variant="secondary" className="text-2xs">{MEAL_LABELS[m]}</Badge>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 tabular-nums text-muted-foreground text-xs">
-                      {req.startDate.split("-").reverse().join("/")} — {req.endDate.split("-").reverse().join("/")}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{days}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-primary">
-                      {total.toFixed(2)}
-                    </td>
-                    <td className="px-2 py-2">
-                      <button onClick={() => removeRequest(req.id)} className="p-1 rounded-md hover:bg-muted transition-colors">
-                        <X className="h-3.5 w-3.5 text-muted-foreground" />
-                      </button>
-                    </td>
-                  </tr>
+                  <Fragment key={req.id}>
+                    <tr 
+                      className="hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={() => toggleRequest(req.id)}
+                    >
+                      <td className="px-3 py-2 font-medium text-foreground flex items-center gap-2">
+                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        {getPersonName(req.personId)}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{getJobName(req.jobId)}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{stateLabel}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex gap-1 flex-wrap">
+                          {req.meals.map((m) => (
+                            <Badge key={m} variant="secondary" className="text-2xs">{MEAL_LABELS[m]}</Badge>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 tabular-nums text-muted-foreground text-xs">
+                        {req.startDate.split("-").reverse().join("/")} — {req.endDate.split("-").reverse().join("/")}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">{days}</td>
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold text-primary">
+                        {total.toFixed(2)}
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <button onClick={(e) => { e.stopPropagation(); removeRequest(req.id); }} className="p-1 rounded-md hover:bg-muted transition-colors">
+                          <X className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-muted/10">
+                        <td colSpan={8} className="px-6 py-4">
+                          <div className="text-xs text-muted-foreground mb-3 font-medium">Editar dias individualmente:</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            {dates.map((date) => {
+                              const dayMeals = req.dailyOverrides && req.dailyOverrides[date] !== undefined ? req.dailyOverrides[date] : req.meals;
+                              const isWeekend = new Date(date + "T00:00:00").getDay() === 0 || new Date(date + "T00:00:00").getDay() === 6;
+                              return (
+                                <div key={date} className="bg-card p-3 rounded-md border border-border flex flex-col gap-2">
+                                  <span className="font-semibold text-xs tabular-nums text-foreground">{date.split("-").reverse().join("/")}</span>
+                                  <div className="flex flex-col gap-2 mt-1">
+                                    {(["cafe", "almoco", "janta"] as MealType[]).map((meal) => {
+                                      const isBlockedAlmoco = meal === "almoco" && person?.isRegistered && !isWeekend;
+                                      return (
+                                        <div key={meal} className="flex items-center gap-2">
+                                          <Checkbox
+                                            id={`req-${req.id}-${date}-${meal}`}
+                                            checked={isBlockedAlmoco ? false : dayMeals.includes(meal)}
+                                            disabled={isBlockedAlmoco}
+                                            onCheckedChange={(checked) => setDailyOverride(req.id, date, meal, checked as boolean)}
+                                            className="h-3 w-3"
+                                          />
+                                          <Label 
+                                            htmlFor={`req-${req.id}-${date}-${meal}`} 
+                                            className={`text-2xs cursor-pointer ${isBlockedAlmoco ? "text-muted-foreground/50" : ""}`}
+                                          >
+                                            {MEAL_LABELS[meal]} {isBlockedAlmoco && "(Não Custa)"}
+                                          </Label>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>
