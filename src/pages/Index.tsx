@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, Utensils, AlertTriangle, UtensilsCrossed } from "lucide-react";
+import { Clock, Utensils, AlertTriangle, UtensilsCrossed, LayoutDashboard } from "lucide-react";
 import TimeRegistrationTab from "@/components/TimeRegistrationTab";
 import MealRequestTab from "@/components/MealRequestTab";
 import FoodControlTab from "@/components/FoodControlTab";
 import DiscountsTab from "@/components/DiscountsTab";
+import PanelTab from "@/components/PanelTab";
 import {
   type TimeEntry,
   type MealRequest,
@@ -34,8 +35,12 @@ const Index = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
-        <Tabs defaultValue="horas" className="space-y-6">
+        <Tabs defaultValue="painel" className="space-y-6">
           <TabsList className="bg-muted/50 flex-wrap h-auto gap-1 p-1">
+            <TabsTrigger value="painel" className="gap-1.5 text-sm">
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Painel
+            </TabsTrigger>
             <TabsTrigger value="horas" className="gap-1.5 text-sm">
               <Clock className="h-3.5 w-3.5" />
               Registro de Horas
@@ -53,6 +58,10 @@ const Index = () => {
               Descontos
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="painel">
+            <PanelTab />
+          </TabsContent>
 
           <TabsContent value="horas">
             <TimeRegistrationTab
