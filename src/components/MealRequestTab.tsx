@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import {
   type Person,
   type Job,
@@ -36,6 +37,7 @@ interface MealRequestTabProps {
 }
 
 const MealRequestTab = ({ people, jobs, timeEntries, requests, setRequests, onGenerateEntries }: MealRequestTabProps) => {
+  const { toast } = useToast();
   const [selectedJob, setSelectedJob] = useState("");
   const [currentPerson, setCurrentPerson] = useState("");
   const [currentMeals, setCurrentMeals] = useState<MealType[]>([]);
@@ -125,7 +127,18 @@ const MealRequestTab = ({ people, jobs, timeEntries, requests, setRequests, onGe
         }
       });
     });
-    if (newEntries.length > 0) onGenerateEntries(newEntries);
+    if (newEntries.length > 0) {
+      onGenerateEntries(newEntries);
+      toast({
+        title: "Operação Concluída",
+        description: "Os registros de horas foram gerados com sucesso.",
+      });
+    } else {
+      toast({
+        title: "Tudo atualizado",
+        description: "Todos os dias solicitados já estão no registro de horas.",
+      });
+    }
   };
 
   const buildXlsxWorkbook = () => {
