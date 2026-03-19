@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Clock, Utensils, AlertTriangle, UtensilsCrossed, CreditCard, FileText, Loader2 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import TimeRegistrationTab from "@/components/TimeRegistrationTab";
 import MealRequestTab from "@/components/MealRequestTab";
 import FoodControlTab from "@/components/FoodControlTab";
@@ -173,10 +175,12 @@ const Index = () => {
                 <span>Descontos</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <Separator className="my-2 bg-border/40" />
             <SidebarMenuItem>
-              <SidebarMenuButton isActive={activePage === "extrato"} onClick={() => setActivePage("extrato")}>
+              <SidebarMenuButton isActive={activePage === "extrato"} onClick={() => setActivePage("extrato")} className="font-medium">
                 <FileText className="h-4 w-4" />
-                <span>Extrato</span>
+                <span>Extrato Geral</span>
+                <Badge variant="secondary" className="ml-auto text-[10px] px-1 h-4 bg-primary/10 text-primary border-primary/20">Novo</Badge>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -191,7 +195,7 @@ const Index = () => {
                 Controle de Montagem
               </h1>
               <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">
-                Registro de horas, solicitação de refeições, controle de alimentação e descontos
+                Registro de horas, solicitação de refeições, controle de alimentação, descontos e extrato
               </p>
             </div>
             <div className="ml-auto flex items-center gap-2">
