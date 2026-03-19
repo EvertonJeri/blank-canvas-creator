@@ -14,7 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-<<<<<<< HEAD
       discount_confirmations: {
         Row: {
           confirmed: boolean | null
@@ -163,21 +162,21 @@ export type Database = {
       }
       payment_confirmations: {
         Row: {
-          confirmed: boolean
+          confirmed: boolean | null
           created_at: string | null
           id: string
           payment_date: string | null
           type: string
         }
         Insert: {
-          confirmed?: boolean
+          confirmed?: boolean | null
           created_at?: string | null
           id: string
           payment_date?: string | null
-          type?: string
+          type: string
         }
         Update: {
-          confirmed?: boolean
+          confirmed?: boolean | null
           created_at?: string | null
           id?: string
           payment_date?: string | null
@@ -263,9 +262,6 @@ export type Database = {
           },
         ]
       }
-=======
-      [_ in never]: never
->>>>>>> 633658cbbbe2ab942b8a65e5a350dfca66009522
     }
     Views: {
       [_ in never]: never

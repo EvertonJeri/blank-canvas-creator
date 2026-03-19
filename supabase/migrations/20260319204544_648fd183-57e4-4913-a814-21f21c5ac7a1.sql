@@ -1,5 +1,3 @@
--- Script de Criação do Banco de Dados para Registro de Horas e Refeições
--- Você pode rodar este código no "SQL Editor" do seu painel do Supabase.
 
 -- Tabela: jobs
 CREATE TABLE IF NOT EXISTS public.jobs (
@@ -16,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.people (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Tabela: time_entries (Base do Registro de Horas)
+-- Tabela: time_entries
 CREATE TABLE IF NOT EXISTS public.time_entries (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   person_id UUID NOT NULL REFERENCES public.people(id) ON DELETE CASCADE,
@@ -31,7 +29,7 @@ CREATE TABLE IF NOT EXISTS public.time_entries (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Tabela: meal_requests (Solicitações de Refeições)
+-- Tabela: meal_requests
 CREATE TABLE IF NOT EXISTS public.meal_requests (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   person_id UUID NOT NULL REFERENCES public.people(id) ON DELETE CASCADE,
@@ -39,49 +37,36 @@ CREATE TABLE IF NOT EXISTS public.meal_requests (
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
   meals TEXT[] NOT NULL,
-  daily_overrides JSONB, -- Para salvar o objeto das alterações individuais de cada dia JSON
+  daily_overrides JSONB,
   location TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Tabela: food_control (Controle de Alimentação)
+-- Tabela: food_control
 CREATE TABLE IF NOT EXISTS public.food_control (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   person_id UUID NOT NULL REFERENCES public.people(id) ON DELETE CASCADE,
   job_id UUID NOT NULL REFERENCES public.jobs(id) ON DELETE CASCADE,
   date DATE NOT NULL,
-  meal_type TEXT NOT NULL, -- 'cafe', 'almoco' ou 'janta'
+  meal_type TEXT NOT NULL,
   status TEXT DEFAULT 'not_consumed',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(person_id, job_id, date, meal_type)
 );
 
--- Habilitar RLS (Row Level Security) para segurança
-ALTER TABLE public.jobs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.people ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.time_entries ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.meal_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.food_control ENABLE ROW LEVEL SECURITY;
-
--- Tabela: discount_confirmations (Confirmação de Pagamento de Descontos)
+-- Tabela: discount_confirmations
 CREATE TABLE IF NOT EXISTS public.discount_confirmations (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   person_id UUID NOT NULL REFERENCES public.people(id) ON DELETE CASCADE,
   confirmed BOOLEAN DEFAULT FALSE,
   payment_date DATE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  unique(person_id)
+  UNIQUE(person_id)
 );
 
--- Habilitar RLS
-ALTER TABLE public.discount_confirmations ENABLE ROW LEVEL SECURITY;
-
--- Política
-CREATE POLICY "Enable all for discount_confirmations" ON public.discount_confirmations FOR ALL USING (true);
-
--- Tabela: payment_confirmations (Confirmação de Pagamento de Solicitações/Jobs)
+-- Tabela: payment_confirmations
 CREATE TABLE IF NOT EXISTS public.payment_confirmations (
-  id TEXT PRIMARY KEY, -- pode ser o ID de meal_request ou job-ID
+  id TEXT PRIMARY KEY,
   type TEXT NOT NULL CHECK (type IN ('request', 'job')),
   payment_date DATE,
   confirmed BOOLEAN DEFAULT FALSE,
@@ -89,20 +74,19 @@ CREATE TABLE IF NOT EXISTS public.payment_confirmations (
 );
 
 -- Habilitar RLS
+ALTER TABLE public.jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.people ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.time_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.meal_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.food_control ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.discount_confirmations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payment_confirmations ENABLE ROW LEVEL SECURITY;
 
--- Política
-CREATE POLICY "Enable all for payment_confirmations" ON public.payment_confirmations FOR ALL USING (true);
-
--- ============================================================
--- POLÍTICAS RLS FALTANTES (rode no Supabase SQL Editor)
--- ============================================================
-
--- Sem essas políticas o Supabase bloqueia todas as leituras/gravações
+-- Políticas RLS (acesso público para todas as tabelas)
 CREATE POLICY "Enable all for jobs" ON public.jobs FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all for people" ON public.people FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all for time_entries" ON public.time_entries FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all for meal_requests" ON public.meal_requests FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Enable all for food_control" ON public.food_control FOR ALL USING (true) WITH CHECK (true);
-
-
+CREATE POLICY "Enable all for discount_confirmations" ON public.discount_confirmations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all for payment_confirmations" ON public.payment_confirmations FOR ALL USING (true) WITH CHECK (true);
