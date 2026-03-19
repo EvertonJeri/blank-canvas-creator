@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Plus, Trash2, AlertCircle } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Plus, Trash2, AlertCircle, ChevronDown, ChevronRight, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,6 +55,31 @@ const MealRequestTab = ({
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedMeals, setSelectedMeals] = useState<MealType[]>(["cafe", "almoco", "janta"]);
+  const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedRequests((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleMealOverride = (req: MealRequest, date: string, meal: MealType) => {
+    const currentDayMeals = req.dailyOverrides?.[date] ?? req.meals;
+    const isSelected = currentDayMeals.includes(meal);
+    
+    let nextDayMeals: MealType[];
+    if (isSelected) {
+      nextDayMeals = currentDayMeals.filter((m) => m !== meal);
+    } else {
+      nextDayMeals = [...currentDayMeals, meal];
+    }
+
+    const nextOverrides = { ...req.dailyOverrides, [date]: nextDayMeals };
+    onUpdateRequest({ ...req, dailyOverrides: nextOverrides });
+  };
 
   const personBalance = useMemo(() => {
     if (!currentPerson) return 0;
@@ -222,28 +247,85 @@ const MealRequestTab = ({
                   return sum + (dayMeals?.reduce((dSum, m) => dSum + getMealValue(m, date, person), 0) || 0);
                 }, 0);
 
+                const isExpanded = expandedRequests.has(req.id);
+                
                 return (
-                  <tr key={req.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-semibold text-foreground">{getPersonName(req.personId)}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
-                      {(req.startDate || "").split("-").reverse().join("/")} até {(req.endDate || "").split("-").reverse().join("/")}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1.5 flex-wrap">
-                        {req.meals?.map((m) => (
-                          <Badge key={m} variant="outline" className="text-[10px] capitalize font-medium">{MEAL_LABELS[m]}</Badge>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold tabular-nums text-foreground">
-                      R$ {total.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="icon" onClick={() => onRemoveRequest(req.id)} className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
+                  <React.Fragment key={req.id}>
+                    <tr 
+                      className="hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={() => toggleExpand(req.id)}
+                    >
+                      <td className="px-4 py-3 font-semibold text-foreground flex items-center gap-2">
+                        {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                        {getPersonName(req.personId)}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
+                        {(req.startDate || "").split("-").reverse().join("/")} até {(req.endDate || "").split("-").reverse().join("/")}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1.5 flex-wrap">
+                          {req.meals?.map((m) => (
+                            <Badge key={m} variant="outline" className="text-[10px] capitalize font-medium">{MEAL_LABELS[m]}</Badge>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold tabular-nums text-foreground">
+                        R$ {total.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={(e) => { e.stopPropagation(); onRemoveRequest(req.id); }} 
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                    
+                    {isExpanded && (
+                      <tr className="bg-muted/10">
+                        <td colSpan={5} className="p-4 border-t border-border/50">
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                              <CalendarDays className="h-3.5 w-3.5" /> Detalhes Diários e Ajustes
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                              {datesInRange.map(date => {
+                                const dayMeals = req.dailyOverrides?.[date] ?? req.meals;
+                                const person = people.find(p => p.id === req.personId);
+                                const dayTotal = dayMeals.reduce((sum, m) => sum + getMealValue(m, date, person), 0);
+                                const dateFormatted = date.split("-").reverse().join("/");
+                                
+                                return (
+                                  <div key={date} className="p-3 rounded-lg border border-border bg-background shadow-xs">
+                                    <div className="flex justify-between items-center mb-2">
+                                      <span className="text-xs font-semibold">{dateFormatted}</span>
+                                      <span className="text-xs font-bold text-primary">R$ {dayTotal.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex gap-3">
+                                      {(["cafe", "almoco", "janta"] as MealType[]).map(m => (
+                                        <div key={m} className="flex items-center space-x-1.5">
+                                          <Checkbox 
+                                            id={`${req.id}-${date}-${m}`}
+                                            checked={dayMeals.includes(m)}
+                                            onCheckedChange={() => toggleMealOverride(req, date, m)}
+                                            className="h-3.5 w-3.5"
+                                          />
+                                          <Label htmlFor={`${req.id}-${date}-${m}`} className="text-xs cursor-pointer">{MEAL_LABELS[m]}</Label>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })
             )}
