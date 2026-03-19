@@ -226,7 +226,7 @@ const MealRequestTab = ({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1.5 flex-wrap">
-                        {req.meals.map((m) => (
+                        {req.meals?.map((m) => (
                           <Badge key={m} variant="outline" className="text-[10px] capitalize font-medium">{MEAL_LABELS[m]}</Badge>
                         ))}
                       </div>

@@ -206,7 +206,7 @@ const StatementTab = ({ people, jobs, requests, timeEntries, foodControl }: Stat
                         <div key={idx} className="flex items-center justify-between text-sm py-2 px-3 rounded-lg border border-border bg-muted/10 hover:bg-muted/30 transition-colors">
                           <div className="flex items-center gap-3">
                             <span className="text-2xs tabular-nums text-muted-foreground bg-background px-2 py-0.5 rounded border border-border">
-                              {d.date.split("-").reverse().join("/")}
+                              {d.date?.includes("-") ? d.date.split("-").reverse().join("/") : d.date || "—"}
                             </span>
                             <span className="font-medium text-foreground">{d.reason}</span>
                             <span className="text-[10px] text-muted-foreground">({getJobName(d.jobId)})</span>

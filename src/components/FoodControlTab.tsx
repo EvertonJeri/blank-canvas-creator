@@ -211,8 +211,8 @@ const FoodControlTab = ({
                 return (
                   <tr key={row.key} className="hover:bg-muted/30 transition-colors">
                     <td className="px-3 py-2 font-medium text-foreground whitespace-nowrap">{getPersonName(row.personId)}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap max-w-[160px] truncate">{getJobName(row.jobId)}</td>
-                    <td className="px-3 py-2 tabular-nums text-muted-foreground">{row.date.split("-").reverse().join("/")}</td>
+                    <td className="px-3 py-2 tabular-nums text-muted-foreground whitespace-nowrap max-w-[160px] truncate">{getJobName(row.jobId)}</td>
+                    <td className="px-3 py-2 tabular-nums text-muted-foreground">{row.date?.includes("-") ? row.date.split("-").reverse().join("/") : row.date || "—"}</td>
                     {/* Requested columns - read only */}
                     <td className="text-center px-1 py-2">
                       {row.requestedCafe ? <Badge variant="secondary" className="text-2xs">✓</Badge> : <span className="text-muted-foreground/40">—</span>}
