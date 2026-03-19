@@ -281,7 +281,7 @@ const PaymentTab = ({
                              )}
                              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">Detalhamento da Solicitação</p>
                              <div className="flex flex-wrap gap-2">
-                               {req.meals.map(m => (
+                               {(req.meals || []).map(m => (
                                  <Badge key={m} variant="outline" className="capitalize text-[10px]">{MEAL_LABELS[m]}</Badge>
                                ))}
                              </div>
