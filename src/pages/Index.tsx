@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, SidebarMenuBadge, SidebarSeparator } from "@/components/ui/sidebar";
+import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Clock, Utensils, AlertTriangle, UtensilsCrossed, CreditCard, FileText, Loader2 } from "lucide-react";
 import TimeRegistrationTab from "@/components/TimeRegistrationTab";
 import MealRequestTab from "@/components/MealRequestTab";
@@ -173,13 +173,11 @@ const Index = () => {
                 <span>Descontos</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarSeparator className="my-2" />
             <SidebarMenuItem>
-              <SidebarMenuButton isActive={activePage === "extrato"} onClick={() => setActivePage("extrato")} className="font-medium">
+              <SidebarMenuButton isActive={activePage === "extrato"} onClick={() => setActivePage("extrato")}>
                 <FileText className="h-4 w-4" />
                 <span>Extrato Geral</span>
               </SidebarMenuButton>
-              <SidebarMenuBadge className="bg-primary/10 text-primary border border-primary/20">Novo</SidebarMenuBadge>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
