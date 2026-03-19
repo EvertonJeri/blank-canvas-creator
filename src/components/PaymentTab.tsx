@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -146,7 +146,7 @@ const PaymentTab = ({
       </div>
 
       <div className="space-y-4">
-        {Array.from(groupedByJob.keys()).map((jobId) => {
+        {Array.from(groupedByJob.keys()).map((jobId: string) => {
           const jobReqs = groupedByJob.get(jobId)!;
           const jobConf = getConfirmation(`job-${jobId}`);
           const isJobPaid = jobConf?.confirmed;
@@ -199,7 +199,7 @@ const PaymentTab = ({
                   const isPaid = conf?.confirmed;
                   const paymentDate = conf?.paymentDate || new Date().toISOString().split("T")[0];
                   const total = calcRequestTotal(req);
-                  const personBalance = calculatePersonBalance(req.personId, mealRequestsData, foodControl, confirmations);
+                  const personBalance = calculatePersonBalance(req.personId, requests, foodControl, confirmations, people);
 
                   return (
                     <div key={req.id} className="bg-background hover:bg-muted/5 transition-colors">

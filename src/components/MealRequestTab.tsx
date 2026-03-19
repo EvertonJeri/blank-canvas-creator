@@ -1,7 +1,5 @@
 import { useState, useMemo } from "react";
-import { format, addDays } from "date-fns";
-import { Clock, Plus, Trash2, Calendar as CalendarIcon, Save, AlertCircle, Loader2 } from "lucide-react";
-import * as XLSX from "xlsx";
+import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +30,7 @@ interface MealRequestTabProps {
   requests: MealRequest[];
   foodControl: FoodControlEntry[];
   confirmations: (DiscountConfirmation | PaymentConfirmation)[];
-  setRequests: React.Dispatch<React.SetStateAction<MealRequest[]>>;
+  setRequests: (requests: MealRequest[]) => void;
   onUpdateRequest: (req: MealRequest) => void;
   onRemoveRequest: (id: string) => void;
   onGenerateEntries: (entries: TimeEntry[]) => void;
@@ -51,7 +49,7 @@ const MealRequestTab = ({
   onGenerateEntries,
 }: MealRequestTabProps) => {
   const [selectedJob, setSelectedJob] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState<LocationType>("Atelier Casa do Trem");
+  const [selectedLocation, setSelectedLocation] = useState<LocationType>("Dentro SP");
   const [currentPerson, setCurrentPerson] = useState("");
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0]);
@@ -59,8 +57,8 @@ const MealRequestTab = ({
 
   const personBalance = useMemo(() => {
     if (!currentPerson) return 0;
-    return calculatePersonBalance(currentPerson, requests, foodControl, confirmations);
-  }, [currentPerson, requests, foodControl, confirmations]);
+    return calculatePersonBalance(currentPerson, requests, foodControl, confirmations, people);
+  }, [currentPerson, requests, foodControl, confirmations, people]);
 
   const addPersonToJob = () => {
     if (!selectedJob || !currentPerson || !startDate || !endDate) return;
