@@ -1,26 +1,17 @@
 import { useState } from "react";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { Clock, Utensils, AlertTriangle, UtensilsCrossed, CreditCard } from "lucide-react";
+import { Clock, Utensils, AlertTriangle, UtensilsCrossed, CreditCard, FileText } from "lucide-react";
 import TimeRegistrationTab from "@/components/TimeRegistrationTab";
 import MealRequestTab from "@/components/MealRequestTab";
 import FoodControlTab from "@/components/FoodControlTab";
 import DiscountsTab from "@/components/DiscountsTab";
 import PaymentTab from "@/components/PaymentTab";
-import { type PaymentConfirmation } from "@/components/PaymentTab";
-import {
-  type TimeEntry,
-  type MealRequest,
-  type FoodControlEntry,
-  type DiscountConfirmation,
-  SAMPLE_PEOPLE,
-  SAMPLE_JOBS,
-} from "@/lib/types";
-
 import { useDatabase } from "@/hooks/use-database";
 import { Loader2 } from "lucide-react";
 
+import StatementTab from "@/components/StatementTab";
+
 const Index = () => {
-<<<<<<< HEAD
   const {
     people,
     jobs,
@@ -28,20 +19,16 @@ const Index = () => {
     mealRequests,
     foodControl,
     discountConfirmations,
+    paymentConfirmations,
     updateFoodControl,
     updateDiscountConfirmation,
+    updatePaymentConfirmation,
     updateTimeEntry,
     updateMealRequest
   } = useDatabase();
-=======
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
-  const [mealRequests, setMealRequests] = useState<MealRequest[]>([]);
-  const [foodControl, setFoodControl] = useState<FoodControlEntry[]>([]);
-  const [discountConfirmations, setDiscountConfirmations] = useState<DiscountConfirmation[]>([]);
-  const [paymentConfirmations, setPaymentConfirmations] = useState<PaymentConfirmation[]>([]);
->>>>>>> e56d6645f1adde7db7e65bcb3e4a33a5ca322e9e
 
   const [activePage, setActivePage] = useState("horas");
+
 
   if (people.isLoading || jobs.isLoading) {
     return (
@@ -57,22 +44,17 @@ const Index = () => {
     const timeEntriesData = timeEntries.data || [];
     const mealRequestsData = mealRequests.data || [];
     const foodControlData = foodControl.data || [];
-    const confirmationsData = discountConfirmations.data || [];
+    const discountConfirmationsData = discountConfirmations.data || [];
+    const paymentConfirmationsData = paymentConfirmations.data || [];
 
     switch (activePage) {
       case "horas":
         return (
           <TimeRegistrationTab
             entries={timeEntriesData}
-            setEntries={async (newEntries) => {
-               // Keep this for local UI state if still needed by component
-            }}
+            setEntries={() => {}}
             onUpdateEntry={(entry) => updateTimeEntry.mutate(entry)}
-            onRemoveEntry={(id) => {
-               // Need to implement remove mutation or treat it as update with deleted flag?
-               // The useDatabase hook doesn't have delete yet, I'll add it if needed.
-               // For now just pass it.
-            }}
+            onRemoveEntry={() => {}}
             people={peopleData}
             jobs={jobsData}
           />
@@ -84,33 +66,40 @@ const Index = () => {
             jobs={jobsData}
             timeEntries={timeEntriesData}
             requests={mealRequestsData}
-            setRequests={async (newRequests) => {
-               // Same as above
-            }}
+            foodControl={foodControlData}
+            confirmations={[...discountConfirmationsData, ...paymentConfirmationsData] as any}
+            setRequests={() => {}}
             onUpdateRequest={(req) => updateMealRequest.mutate(req)}
-            onRemoveRequest={(id) => {
-               // Same as above
-            }}
+            onRemoveRequest={() => {}}
             onGenerateEntries={(newEntries) => {
               newEntries.forEach(e => updateTimeEntry.mutate(e));
             }}
           />
-        );
-<<<<<<< HEAD
 
-=======
+        );
       case "pagamento":
         return (
           <PaymentTab
-            people={SAMPLE_PEOPLE}
-            jobs={SAMPLE_JOBS}
-            requests={mealRequests}
-            timeEntries={timeEntries}
-            confirmations={paymentConfirmations}
-            setConfirmations={setPaymentConfirmations}
+            people={peopleData}
+            jobs={jobsData}
+            requests={mealRequestsData}
+            timeEntries={timeEntriesData}
+            foodControl={foodControlData}
+            confirmations={paymentConfirmationsData}
+            onUpdateConfirmation={(conf) => updatePaymentConfirmation.mutate(conf)}
           />
         );
->>>>>>> e56d6645f1adde7db7e65bcb3e4a33a5ca322e9e
+      case "extrato":
+        return (
+          <StatementTab
+            people={peopleData}
+            jobs={jobsData}
+            requests={mealRequestsData}
+            timeEntries={timeEntriesData}
+            foodControl={foodControlData}
+          />
+        );
+
       case "controle":
         return (
           <FoodControlTab
@@ -119,13 +108,7 @@ const Index = () => {
             requests={mealRequestsData}
             timeEntries={timeEntriesData}
             foodControl={foodControlData}
-            setFoodControl={async (newControl) => {
-              if (typeof newControl === 'function') {
-                const updated = (newControl as any)(foodControlData);
-                // Find what changed and update DB
-                // For simplicity, we might need to update the component to use individual updates
-              }
-            }}
+            setFoodControl={() => {}}
             onUpdateEntry={(entry) => updateFoodControl.mutate(entry)}
           />
         );
@@ -137,25 +120,22 @@ const Index = () => {
             requests={mealRequestsData}
             timeEntries={timeEntriesData}
             foodControl={foodControlData}
-            confirmations={confirmationsData}
-            setConfirmations={async (newConf) => {
-               // Similar to above
-            }}
+            confirmations={discountConfirmationsData}
+            setConfirmations={() => {}}
             onUpdateConfirmation={(conf) => updateDiscountConfirmation.mutate(conf)}
           />
         );
       default:
         return (
           <TimeRegistrationTab
-            entries={timeEntries}
-            setEntries={setTimeEntries}
-            people={SAMPLE_PEOPLE}
-            jobs={SAMPLE_JOBS}
+            entries={timeEntriesData}
+            setEntries={() => {}}
+            people={peopleData}
+            jobs={jobsData}
           />
         );
     }
   };
-
 
   return (
     <SidebarProvider>
@@ -193,6 +173,12 @@ const Index = () => {
               <SidebarMenuButton isActive={activePage === "descontos"} onClick={() => setActivePage("descontos")}>
                 <AlertTriangle className="h-4 w-4" />
                 <span>Descontos</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton isActive={activePage === "extrato"} onClick={() => setActivePage("extrato")}>
+                <FileText className="h-4 w-4" />
+                <span>Extrato</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

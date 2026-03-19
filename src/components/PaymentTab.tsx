@@ -9,28 +9,38 @@ import {
   type Job,
   type MealRequest,
   type TimeEntry,
+  type PaymentConfirmation,
   MEAL_LABELS,
   getDatesInRange,
   getMealValue,
+  calculatePersonBalance,
+  type FoodControlEntry,
+  type DiscountConfirmation,
 } from "@/lib/types";
 
-export interface PaymentConfirmation {
-  id: string; // requestId or jobId
-  type: "request" | "job";
-  paymentDate: string;
-  confirmed: boolean;
-}
 
 interface PaymentTabProps {
   people: Person[];
   jobs: Job[];
   requests: MealRequest[];
   timeEntries: TimeEntry[];
-  confirmations: PaymentConfirmation[];
-  setConfirmations: React.Dispatch<React.SetStateAction<PaymentConfirmation[]>>;
+  foodControl: FoodControlEntry[];
+  confirmations: (DiscountConfirmation | PaymentConfirmation)[];
+  onUpdateConfirmation: (conf: PaymentConfirmation) => void;
+  onRemoveConfirmation?: (id: string) => void;
 }
 
-const PaymentTab = ({ people, jobs, requests, timeEntries, confirmations, setConfirmations }: PaymentTabProps) => {
+const PaymentTab = ({
+  people,
+  jobs,
+  requests,
+  timeEntries,
+  foodControl,
+  confirmations,
+  onUpdateConfirmation,
+  onRemoveConfirmation,
+}: PaymentTabProps) => {
+
   const [filterJob, setFilterJob] = useState("all");
   const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
 
@@ -71,35 +81,37 @@ const PaymentTab = ({ people, jobs, requests, timeEntries, confirmations, setCon
     });
   };
 
-  const getConfirmation = (id: string) => confirmations.find((c) => c.id === id);
+  const getConfirmation = (id: string) => confirmations.find((c) => 'id' in c && c.id === id) as PaymentConfirmation | undefined;
+
 
   const confirmPayment = (id: string, type: "request" | "job", paymentDate: string) => {
-    setConfirmations((prev) => {
-      const idx = prev.findIndex((c) => c.id === id);
-      const entry: PaymentConfirmation = { id, type, paymentDate, confirmed: true };
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = entry;
-        return copy;
+    const conf: PaymentConfirmation = { id, type, paymentDate, confirmed: true };
+    onUpdateConfirmation(conf);
+
+    // If all requests for this job are now confirmed, maybe confirm the job too?
+    // User wants: "quando todos os funcionários estiverem pagos o geral fique como pago e registre o pagamento do último que foi dado como pago"
+    if (type === "request") {
+      const req = requests.find(r => r.id === id);
+      if (req) {
+        const jobReqs = registeredRequests.filter(r => r.jobId === req.jobId);
+        const otherReqsConfirmed = jobReqs.every(r => r.id === id || getConfirmation(r.id)?.confirmed);
+        if (otherReqsConfirmed) {
+          onUpdateConfirmation({ id: `job-${req.jobId}`, type: "job", paymentDate, confirmed: true });
+        }
       }
-      return [...prev, entry];
-    });
+    }
   };
 
   const updatePaymentDate = (id: string, type: "request" | "job", date: string) => {
-    setConfirmations((prev) => {
-      const idx = prev.findIndex((c) => c.id === id);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = { ...copy[idx], paymentDate: date };
-        return copy;
-      }
-      return [...prev, { id, type, paymentDate: date, confirmed: false }];
-    });
+     onUpdateConfirmation({ id, type, paymentDate: date, confirmed: getConfirmation(id)?.confirmed || false });
   };
 
   const removeConfirmation = (id: string) => {
-    setConfirmations((prev) => prev.filter((c) => c.id !== id));
+    // We don't have a direct remove mutation in the current useDatabase for paymentConfirmations but we can set confirmed to false
+    const existing = getConfirmation(id);
+    if (existing) {
+      onUpdateConfirmation({ ...existing, confirmed: false });
+    }
   };
 
   const calcRequestTotal = (req: MealRequest) => {
@@ -112,6 +124,7 @@ const PaymentTab = ({ people, jobs, requests, timeEntries, confirmations, setCon
     });
     return total;
   };
+
 
   return (
     <div className="space-y-4">
@@ -171,14 +184,18 @@ const PaymentTab = ({ people, jobs, requests, timeEntries, confirmations, setCon
                 </label>
                 <Input
                   type="date"
+                  disabled={jobConf?.confirmed}
                   value={jobConf?.paymentDate || ""}
                   onChange={(e) => updatePaymentDate(`job-${jobId}`, "job", e.target.value)}
                   className="h-7 text-xs tabular-nums w-[150px]"
                 />
                 {jobConf?.confirmed ? (
-                  <Button size="sm" variant="secondary" className="h-7 text-xs gap-1" onClick={() => removeConfirmation(`job-${jobId}`)}>
-                    <Check className="h-3 w-3" /> Pago
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-2xs bg-green-500/10 text-green-600 border-green-200">✓ Pago</Badge>
+                    <Button size="sm" variant="ghost" className="h-7 text-2xs text-muted-foreground" onClick={() => removeConfirmation(`job-${jobId}`)}>
+                      Estornar
+                    </Button>
+                  </div>
                 ) : (
                   <Button
                     size="sm"
@@ -190,8 +207,8 @@ const PaymentTab = ({ people, jobs, requests, timeEntries, confirmations, setCon
                     <Check className="h-3 w-3" /> Confirmar Pagamento
                   </Button>
                 )}
-                {(jobConf?.confirmed || allRequestsConfirmed) && (
-                  <Badge variant="secondary" className="text-2xs">✓ Pago</Badge>
+                {(!jobConf?.confirmed && allRequestsConfirmed) && (
+                  <Badge variant="secondary" className="text-2xs bg-blue-500/10 text-blue-600 border-blue-200">✓ Todos Func. Pagos</Badge>
                 )}
               </div>
 
@@ -240,30 +257,30 @@ const PaymentTab = ({ people, jobs, requests, timeEntries, confirmations, setCon
                           <td className="px-3 py-2 text-right tabular-nums font-semibold text-primary">{total.toFixed(2)}</td>
                           <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-2 justify-center">
+                              <Input
+                                type="date"
+                                disabled={isPaid}
+                                value={reqConf?.paymentDate || jobConf?.paymentDate || ""}
+                                onChange={(e) => updatePaymentDate(req.id, "request", e.target.value)}
+                                className="h-7 text-xs tabular-nums w-[130px]"
+                              />
                               {isPaid ? (
-                                <Badge variant="secondary" className="text-2xs">✓ Pago</Badge>
+                                <Badge variant="secondary" className="text-2xs bg-green-500/10 text-green-600 border-green-200">✓</Badge>
                               ) : (
-                                <>
-                                  <Input
-                                    type="date"
-                                    value={reqConf?.paymentDate || ""}
-                                    onChange={(e) => updatePaymentDate(req.id, "request", e.target.value)}
-                                    className="h-7 text-xs tabular-nums w-[130px]"
-                                  />
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs"
-                                    disabled={!reqConf?.paymentDate}
-                                    onClick={() => confirmPayment(req.id, "request", reqConf?.paymentDate || "")}
-                                  >
-                                    <Check className="h-3 w-3" />
-                                  </Button>
-                                </>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  disabled={!reqConf?.paymentDate}
+                                  onClick={() => confirmPayment(req.id, "request", reqConf?.paymentDate || "")}
+                                >
+                                  <Check className="h-3 w-3" />
+                                </Button>
                               )}
                             </div>
                           </td>
                         </tr>
+
                         {isExpanded && (
                           <tr className="bg-muted/10">
                             <td colSpan={7} className="px-6 py-4">

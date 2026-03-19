@@ -78,3 +78,19 @@ ALTER TABLE public.discount_confirmations ENABLE ROW LEVEL SECURITY;
 
 -- Política
 CREATE POLICY "Enable all for discount_confirmations" ON public.discount_confirmations FOR ALL USING (true);
+
+-- Tabela: payment_confirmations (Confirmação de Pagamento de Solicitações/Jobs)
+CREATE TABLE IF NOT EXISTS public.payment_confirmations (
+  id TEXT PRIMARY KEY, -- pode ser o ID de meal_request ou job-ID
+  type TEXT NOT NULL CHECK (type IN ('request', 'job')),
+  payment_date DATE,
+  confirmed BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Habilitar RLS
+ALTER TABLE public.payment_confirmations ENABLE ROW LEVEL SECURITY;
+
+-- Política
+CREATE POLICY "Enable all for payment_confirmations" ON public.payment_confirmations FOR ALL USING (true);
+

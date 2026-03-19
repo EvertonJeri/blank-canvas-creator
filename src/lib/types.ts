@@ -52,6 +52,14 @@ export interface DiscountConfirmation {
   paymentDate?: string;
 }
 
+export interface PaymentConfirmation {
+  id: string; // requestId or jobId
+  type: "request" | "job";
+  paymentDate: string;
+  confirmed: boolean;
+}
+
+
 
 export interface Job {
   id: string;
@@ -146,18 +154,48 @@ export function getLastExitTime(entry: TimeEntry): string | null {
   return null;
 }
 
-export function determineMealsUsed(entry: TimeEntry, timeRanges = { breakfast: 8, lunch: 12, dinner: 19 }): { cafe: boolean; almoco: boolean; janta: boolean } {
-  const firstEntry = getFirstEntryTime(entry);
-  const lastExit = getLastExitTime(entry);
-  if (!firstEntry || !lastExit) return { cafe: false, almoco: false, janta: false };
+export function calculatePersonBalance(
+  personId: string,
+  requests: MealRequest[],
+  foodControl: FoodControlEntry[],
+  confirmations: (DiscountConfirmation | PaymentConfirmation)[],
+  people: Person[]
+): number {
+  const person = people.find(p => p.id === personId);
+  const personRequests = requests.filter(r => r.personId === personId);
+  let balance = 0;
 
-  const [eh] = firstEntry.split(":").map(Number);
-  const [lh, lm] = lastExit.split(":").map(Number);
-  const lastExitMinutes = lh * 60 + lm;
+  personRequests.forEach(req => {
+    const dates = getDatesInRange(req.startDate, req.endDate);
+    dates.forEach(date => {
+      const reqMeals = req.dailyOverrides?.[date] ?? req.meals;
+      const fc = foodControl.find(f => f.personId === personId && f.jobId === req.jobId && f.date === date);
+      
+      reqMeals.forEach(m => {
+        const val = getMealValue(m, date, person);
+        const used = fc ? (m === 'cafe' ? fc.usedCafe : m === 'almoco' ? fc.usedAlmoco : fc.usedJanta) : false;
+        
+        if (!used) {
+          balance -= val; // Individual discount
+        }
+      });
 
-  return {
-    cafe: eh <= timeRanges.breakfast,
-    almoco: lastExitMinutes >= timeRanges.lunch * 60,
-    janta: lastExitMinutes >= timeRanges.dinner * 60,
-  };
+      if (fc) {
+        const usedMeals: { type: MealType; used: boolean }[] = [
+          { type: 'cafe', used: fc.usedCafe },
+          { type: 'almoco', used: fc.usedAlmoco },
+          { type: 'janta', used: fc.usedJanta }
+        ];
+
+        usedMeals.forEach(um => {
+          if (um.used && !reqMeals.includes(um.type)) {
+            balance += getMealValue(um.type, date, person); // Extra charge
+          }
+        });
+      }
+    });
+  });
+
+  return balance;
 }
+

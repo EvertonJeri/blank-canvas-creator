@@ -25,13 +25,21 @@ import {
   formatMinutes,
   calcTotalMinutes,
   getMealValue,
+  calculatePersonBalance,
+  type FoodControlEntry,
+  type DiscountConfirmation,
+  type PaymentConfirmation,
 } from "@/lib/types";
+import { useMemo } from "react";
+import { AlertCircle } from "lucide-react";
 
 interface MealRequestTabProps {
   people: Person[];
   jobs: Job[];
   timeEntries: TimeEntry[];
   requests: MealRequest[];
+  foodControl: FoodControlEntry[];
+  confirmations: (DiscountConfirmation | PaymentConfirmation)[];
   setRequests: React.Dispatch<React.SetStateAction<MealRequest[]>>;
   onGenerateEntries: (entries: TimeEntry[]) => void;
   onUpdateRequest?: (req: MealRequest) => void;
@@ -43,6 +51,8 @@ const MealRequestTab = ({
   jobs,
   timeEntries,
   requests,
+  foodControl,
+  confirmations,
   setRequests,
   onGenerateEntries,
   onUpdateRequest,
@@ -57,6 +67,13 @@ const MealRequestTab = ({
   const [endDate, setEndDate] = useState<Date>();
   const [selectedLocation, setSelectedLocation] = useState<LocationType | "">("");
   const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
+
+  const personBalance = useMemo(() => {
+    if (!currentPerson) return 0;
+    const allConfirmations = confirmations; // Both discount and payment
+    return calculatePersonBalance(currentPerson, requests, foodControl, allConfirmations, people);
+  }, [currentPerson, requests, foodControl, confirmations, people]);
+
 
   const toggleRequest = (id: string) => {
     setExpandedRequests((prev) => {
@@ -279,7 +296,23 @@ const MealRequestTab = ({
                 ))}
               </SelectContent>
             </Select>
+
+            {currentPerson && personBalance !== 0 && (
+              <div className={`mt-3 flex items-center gap-3 p-3 rounded-xl border ${personBalance < 0 ? 'bg-destructive/10 border-destructive/20 text-destructive font-medium' : 'bg-green-500/10 border-green-200 text-green-600 font-medium'} animate-in fade-in slide-in-from-top-2 duration-300`}>
+                <AlertCircle className="h-5 w-5 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs font-bold leading-tight uppercase tracking-wide">Atenção ao Saldo</p>
+                  <p className="text-[11px] opacity-90 leading-tight mt-1">
+                    Funcionário possui um saldo de <strong>R$ {personBalance.toFixed(2)}</strong> acumulado.
+                  </p>
+                </div>
+                <Badge variant={personBalance < 0 ? "destructive" : "secondary"} className="h-6 text-[10px]">
+                  {personBalance < 0 ? "Débito" : "Crédito"}
+                </Badge>
+              </div>
+            )}
           </div>
+
 
           <div>
             <label className="text-2xs uppercase tracking-wider font-medium text-muted-foreground block mb-2">

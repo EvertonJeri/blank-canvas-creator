@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { type Person, type Job, type TimeEntry, type MealRequest, type FoodControlEntry, type DiscountConfirmation } from "@/lib/types";
+import { type Person, type Job, type TimeEntry, type MealRequest, type FoodControlEntry, type DiscountConfirmation, type PaymentConfirmation } from "@/lib/types";
 
 export function useDatabase() {
   const queryClient = useQueryClient();
@@ -10,7 +10,11 @@ export function useDatabase() {
     queryFn: async () => {
       const { data, error } = await supabase.from("people").select("*").order("name");
       if (error) throw error;
-      return data as Person[];
+      return (data as any[]).map(p => ({
+        id: p.id,
+        name: p.name,
+        isRegistered: p.is_registered
+      })) as Person[];
     },
   });
 
@@ -28,7 +32,6 @@ export function useDatabase() {
     queryFn: async () => {
       const { data, error } = await supabase.from("time_entries").select("*");
       if (error) throw error;
-      // Map database format to TS format if needed
       return data as TimeEntry[];
     },
   });
@@ -89,6 +92,20 @@ export function useDatabase() {
     },
   });
 
+  const paymentConfirmations = useQuery({
+    queryKey: ["payment_confirmations"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("payment_confirmations").select("*");
+      if (error) throw error;
+      return (data as any[]).map(c => ({
+        id: c.id,
+        type: c.type,
+        paymentDate: c.payment_date,
+        confirmed: c.confirmed
+      })) as PaymentConfirmation[];
+    },
+  });
+
   // Mutations
   const updateFoodControl = useMutation({
     mutationFn: async (entry: FoodControlEntry) => {
@@ -133,12 +150,29 @@ export function useDatabase() {
     },
   });
 
+  const updatePaymentConfirmation = useMutation({
+    mutationFn: async (conf: PaymentConfirmation) => {
+      const { error } = await supabase
+        .from("payment_confirmations")
+        .upsert({
+          id: conf.id,
+          type: conf.type,
+          payment_date: conf.paymentDate,
+          confirmed: conf.confirmed
+        }, { onConflict: "id" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payment_confirmations"] });
+    },
+  });
+
   const updateTimeEntry = useMutation({
     mutationFn: async (entry: TimeEntry) => {
       const { error } = await supabase
         .from("time_entries")
         .upsert({
-          id: entry.id?.length > 10 ? entry.id : undefined, // only if valid UUID
+          id: entry.id?.length > 10 ? entry.id : undefined,
           person_id: entry.personId,
           job_id: entry.jobId,
           date: entry.date,
@@ -184,10 +218,11 @@ export function useDatabase() {
     mealRequests,
     foodControl,
     discountConfirmations,
+    paymentConfirmations,
     updateFoodControl,
     updateDiscountConfirmation,
+    updatePaymentConfirmation,
     updateTimeEntry,
     updateMealRequest,
   };
 }
-
