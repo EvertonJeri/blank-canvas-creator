@@ -1,17 +1,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { Clock, Utensils, AlertTriangle, UtensilsCrossed, CreditCard, FileText } from "lucide-react";
+import { Clock, Utensils, AlertTriangle, UtensilsCrossed, CreditCard, FileText, Loader2 } from "lucide-react";
 import TimeRegistrationTab from "@/components/TimeRegistrationTab";
 import MealRequestTab from "@/components/MealRequestTab";
 import FoodControlTab from "@/components/FoodControlTab";
 import DiscountsTab from "@/components/DiscountsTab";
 import PaymentTab from "@/components/PaymentTab";
-import { useDatabase } from "@/hooks/use-database";
-import { Loader2 } from "lucide-react";
-
 import StatementTab from "@/components/StatementTab";
+import { useDatabase } from "@/hooks/use-database";
 
 const Index = () => {
   const {
@@ -31,7 +28,6 @@ const Index = () => {
 
   const [activePage, setActivePage] = useState("horas");
 
-
   if (people.isLoading || jobs.isLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
@@ -40,15 +36,15 @@ const Index = () => {
     );
   }
 
-  const renderContent = () => {
-    const peopleData = people.data || [];
-    const jobsData = jobs.data || [];
-    const timeEntriesData = timeEntries.data || [];
-    const mealRequestsData = mealRequests.data || [];
-    const foodControlData = foodControl.data || [];
-    const discountConfirmationsData = discountConfirmations.data || [];
-    const paymentConfirmationsData = paymentConfirmations.data || [];
+  const peopleData = people.data || [];
+  const jobsData = jobs.data || [];
+  const timeEntriesData = timeEntries.data || [];
+  const mealRequestsData = mealRequests.data || [];
+  const foodControlData = foodControl.data || [];
+  const discountConfirmationsData = discountConfirmations.data || [];
+  const paymentConfirmationsData = paymentConfirmations.data || [];
 
+  const renderContent = () => {
     switch (activePage) {
       case "horas":
         return (
@@ -77,7 +73,6 @@ const Index = () => {
               newEntries.forEach(e => updateTimeEntry.mutate(e));
             }}
           />
-
         );
       case "pagamento":
         return (
@@ -101,7 +96,6 @@ const Index = () => {
             foodControl={foodControlData}
           />
         );
-
       case "controle":
         return (
           <FoodControlTab
@@ -132,6 +126,8 @@ const Index = () => {
           <TimeRegistrationTab
             entries={timeEntriesData}
             setEntries={() => {}}
+            onUpdateEntry={(entry) => updateTimeEntry.mutate(entry)}
+            onRemoveEntry={() => {}}
             people={peopleData}
             jobs={jobsData}
           />
@@ -141,9 +137,9 @@ const Index = () => {
 
   return (
     <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader className="p-4">
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">Menu Principal</h2>
+      <Sidebar variant="inset" className="border-r border-border bg-muted/30">
+        <SidebarHeader className="h-16 flex items-center px-6 border-b border-border bg-background">
+          <h2 className="text-sm font-black uppercase tracking-widest text-primary">Menu Principal</h2>
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu className="px-2 space-y-1">

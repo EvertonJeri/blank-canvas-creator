@@ -105,8 +105,6 @@ const StatementTab = ({ people, jobs, requests, timeEntries, foodControl }: Stat
   }, [filteredRequests, foodControl, people]);
 
   const exportAsImage = () => {
-    // For now, advice user to use window.print or browser screenshot
-    // Generating a beautiful print view
     window.print();
   };
 

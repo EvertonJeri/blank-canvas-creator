@@ -1,37 +1,29 @@
-import { useState, Fragment } from "react";
-import { format } from "date-fns";
-import { CalendarIcon, Download, Plus, X, ClipboardList, Mail, ChevronDown, ChevronRight } from "lucide-react";
+import { useState, useMemo } from "react";
+import { format, addDays } from "date-fns";
+import { Clock, Plus, Trash2, Calendar as CalendarIcon, Save, AlertCircle, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
 import {
   type Person,
   type Job,
-  type MealType,
-  type MealRequest,
   type TimeEntry,
+  type MealRequest,
+  type MealType,
   type LocationType,
   MEAL_LABELS,
-  MEAL_VALUES,
   LOCATIONS,
   getDatesInRange,
-  formatMinutes,
-  calcTotalMinutes,
   getMealValue,
   calculatePersonBalance,
   type FoodControlEntry,
   type DiscountConfirmation,
   type PaymentConfirmation,
 } from "@/lib/types";
-import { useMemo } from "react";
-import { AlertCircle } from "lucide-react";
 
 interface MealRequestTabProps {
   people: Person[];
@@ -41,9 +33,9 @@ interface MealRequestTabProps {
   foodControl: FoodControlEntry[];
   confirmations: (DiscountConfirmation | PaymentConfirmation)[];
   setRequests: React.Dispatch<React.SetStateAction<MealRequest[]>>;
+  onUpdateRequest: (req: MealRequest) => void;
+  onRemoveRequest: (id: string) => void;
   onGenerateEntries: (entries: TimeEntry[]) => void;
-  onUpdateRequest?: (req: MealRequest) => void;
-  onRemoveRequest?: (id: string) => void;
 }
 
 const MealRequestTab = ({
@@ -54,194 +46,47 @@ const MealRequestTab = ({
   foodControl,
   confirmations,
   setRequests,
-  onGenerateEntries,
   onUpdateRequest,
   onRemoveRequest,
+  onGenerateEntries,
 }: MealRequestTabProps) => {
-
-  const { toast } = useToast();
   const [selectedJob, setSelectedJob] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState<LocationType>("Atelier Casa do Trem");
   const [currentPerson, setCurrentPerson] = useState("");
-  const [currentMeals, setCurrentMeals] = useState<MealType[]>([]);
-  const [startDate, setStartDate] = useState<Date>();
-  const [endDate, setEndDate] = useState<Date>();
-  const [selectedLocation, setSelectedLocation] = useState<LocationType | "">("");
-  const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
+  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedMeals, setSelectedMeals] = useState<MealType[]>(["cafe", "almoco", "janta"]);
 
   const personBalance = useMemo(() => {
     if (!currentPerson) return 0;
-    const allConfirmations = confirmations; // Both discount and payment
-    return calculatePersonBalance(currentPerson, requests, foodControl, allConfirmations, people);
-  }, [currentPerson, requests, foodControl, confirmations, people]);
+    return calculatePersonBalance(currentPerson, requests, foodControl, confirmations);
+  }, [currentPerson, requests, foodControl, confirmations]);
 
+  const addPersonToJob = () => {
+    if (!selectedJob || !currentPerson || !startDate || !endDate) return;
 
-  const toggleRequest = (id: string) => {
-    setExpandedRequests((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const setDailyOverride = (reqId: string, date: string, meal: MealType, checked: boolean) => {
-    const req = requests.find(r => r.id === reqId);
-    if (!req) return;
-
-    const currentOverrides = req.dailyOverrides || {};
-    const dayMeals = currentOverrides[date] !== undefined ? currentOverrides[date] : req.meals;
-    
-    const newDayMeals = checked 
-      ? [...dayMeals, meal]
-      : dayMeals.filter(m => m !== meal);
-      
-    const updated = {
-      ...req,
-      dailyOverrides: {
-        ...currentOverrides,
-        [date]: newDayMeals
-      }
-    };
-
-    onUpdateRequest?.(updated);
-
-    setRequests(prev => prev.map(r => r.id === reqId ? updated : r));
-  };
-
-  const toggleMeal = (meal: MealType) => {
-    setCurrentMeals((prev) =>
-      prev.includes(meal) ? prev.filter((m) => m !== meal) : [...prev, meal]
-    );
-  };
-
-  const addRequest = () => {
-    if (!currentPerson || !selectedJob || currentMeals.length === 0 || !startDate || !endDate || !selectedLocation) return;
     const newRequest: MealRequest = {
-      id: crypto.randomUUID(),
+      id: Math.random().toString(36).substr(2, 9),
       personId: currentPerson,
       jobId: selectedJob,
-      meals: [...currentMeals],
-      startDate: startDate.toISOString().split("T")[0],
-      endDate: endDate.toISOString().split("T")[0],
-      location: selectedLocation as LocationType,
+      startDate,
+      endDate,
+      meals: selectedMeals,
+      dailyOverrides: {},
+      location: selectedLocation,
     };
 
-    onUpdateRequest?.(newRequest);
-
-    setRequests((prev) => [...prev, newRequest]);
+    onUpdateRequest(newRequest);
     setCurrentPerson("");
-    setCurrentMeals([]);
   };
-
-  const removeRequest = (id: string) => {
-    onRemoveRequest?.(id);
-    setRequests((prev) => prev.filter((r) => r.id !== id));
-  };
-
 
   const getPersonName = (id: string) => people.find((p) => p.id === id)?.name || "—";
-  const getJobName = (id?: string) => jobs.find((j) => j.id === (id || selectedJob))?.name || "Relatório";
-
-  const generateTimeEntries = () => {
-    if (!selectedJob || jobRequests.length === 0) return;
-    const newEntries: TimeEntry[] = [];
-    jobRequests.forEach((req) => {
-      const dates = getDatesInRange(req.startDate, req.endDate);
-      dates.forEach((date) => {
-        const exists = timeEntries.some((e) => e.personId === req.personId && e.date === date && e.jobId === selectedJob);
-        if (!exists) {
-          newEntries.push({
-            id: crypto.randomUUID(),
-            personId: req.personId,
-            jobId: selectedJob,
-            date,
-            entry1: "", exit1: "",
-            entry2: "", exit2: "",
-            entry3: "", exit3: "",
-          });
-        }
-      });
-    });
-    if (newEntries.length > 0) {
-      onGenerateEntries(newEntries);
-      toast({
-        title: "Operação Concluída",
-        description: "Os registros de horas foram gerados com sucesso.",
-        duration: 5000,
-      });
-    } else {
-      toast({
-        title: "Tudo atualizado",
-        description: "Todos os dias solicitados já estão no registro de horas.",
-        duration: 5000,
-      });
-    }
-  };
-
-  const buildXlsxWorkbook = () => {
-    const jobRequests2 = requests.filter((r) => r.jobId === selectedJob);
-    const wb = XLSX.utils.book_new();
-    const jobName = getJobName();
-
-    const mealRows: (string | number)[][] = [
-      ["SOLICITAÇÃO DE REFEIÇÕES"],
-      ["JOB:", jobName],
-      [],
-      ["Pessoa", "Estado", "Refeições", "Data Início", "Data Fim", "Dias", "Valor Unitário (R$)", "Valor Total (R$)"],
-    ];
-
-      let grandTotal = 0;
-    jobRequests2.forEach((req) => {
-      let total = 0;
-      const person = people.find((p) => p.id === req.personId);
-      const personName = person?.name || "—";
-      const dates = getDatesInRange(req.startDate, req.endDate);
-      const days = dates.length;
-      
-      dates.forEach(date => {
-        const dayMeals = req.dailyOverrides && req.dailyOverrides[date] !== undefined ? req.dailyOverrides[date] : req.meals;
-        dayMeals.forEach(m => {
-          total += getMealValue(m, date, person);
-        });
-      });
-
-      grandTotal += total;
-      const baseMeals = req.meals.map((m) => MEAL_LABELS[m]).join(", ");
-      const statesLabel = req.location || "";
-      mealRows.push([personName, statesLabel, baseMeals, req.startDate.split("-").reverse().join("/"), req.endDate.split("-").reverse().join("/"), days, (total/days).toFixed(2), total.toFixed(2)]);
-    });
-
-    mealRows.push([]);
-    mealRows.push(["", "", "", "", "", "", "TOTAL GERAL", grandTotal]);
-
-    const ws1 = XLSX.utils.aoa_to_sheet(mealRows);
-    ws1["!cols"] = [{ wch: 22 }, { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 18 }, { wch: 16 }];
-    XLSX.utils.book_append_sheet(wb, ws1, "Solicitação Refeições");
-    return { wb, jobName, grandTotal };
-  };
-
-  const exportXlsx = () => {
-    if (!selectedJob || jobRequests.length === 0) return;
-    const { wb, jobName } = buildXlsxWorkbook();
-    const safeName = jobName.replace(/[^a-zA-Z0-9\-_ ]/g, "").trim();
-    XLSX.writeFile(wb, `Solicitacao_${safeName}.xlsx`);
-  };
-
-  const sendEmail = () => {
-    if (!selectedJob || jobRequests.length === 0) return;
-    const jobName = getJobName();
-    const subject = encodeURIComponent(`Solicitação de Refeições - ${jobName}`);
-    const body = encodeURIComponent(
-      `Segue em anexo a solicitação de refeições referente ao ${jobName}.\n\nPor favor, exportar o relatório .xlsx e anexar ao e-mail manualmente.`
-    );
-    window.open(`mailto:?subject=${subject}&body=${body}`, "_self");
-  };
+  const getJobName = (id: string) => jobs.find((j) => j.id === id)?.name || "—";
 
   const jobRequests = selectedJob ? requests.filter((r) => r.jobId === selectedJob) : requests;
 
   return (
     <div className="space-y-6">
-      {/* Job + State selection */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className="text-2xs uppercase tracking-wider font-medium text-muted-foreground block mb-1.5">
@@ -275,7 +120,6 @@ const MealRequestTab = ({
         </div>
       </div>
 
-      {/* Add person form */}
       <div className="rounded-xl border border-border p-4 shadow-card space-y-4">
         <h3 className="text-sm font-semibold text-foreground">Adicionar Pessoa à Solicitação</h3>
 
@@ -298,244 +142,115 @@ const MealRequestTab = ({
             </Select>
 
             {currentPerson && personBalance !== 0 && (
-              <div className={`mt-3 flex items-center gap-3 p-3 rounded-xl border ${personBalance < 0 ? 'bg-destructive/10 border-destructive/20 text-destructive font-medium' : 'bg-green-500/10 border-green-200 text-green-600 font-medium'} animate-in fade-in slide-in-from-top-2 duration-300`}>
+              <div className={`mt-3 flex items-center gap-3 p-3 rounded-xl border ${personBalance < 0 ? 'bg-destructive/10 border-destructive/20 text-destructive font-bold' : 'bg-green-500/10 border-green-200 text-green-600 font-bold'} animate-in fade-in slide-in-from-top-2 duration-300`}>
                 <AlertCircle className="h-5 w-5 shrink-0" />
                 <div className="flex-1">
-                  <p className="text-xs font-bold leading-tight uppercase tracking-wide">Atenção ao Saldo</p>
-                  <p className="text-[11px] opacity-90 leading-tight mt-1">
-                    Funcionário possui um saldo de <strong>R$ {personBalance.toFixed(2)}</strong> acumulado.
+                  <p className="text-xs uppercase tracking-wide">Atenção ao Saldo Global</p>
+                  <p className="text-xs opacity-90 mt-0.5">
+                    Este funcionário possui um saldo de <strong>R$ {personBalance.toFixed(2)}</strong> acumulado.
                   </p>
                 </div>
-                <Badge variant={personBalance < 0 ? "destructive" : "secondary"} className="h-6 text-[10px]">
+                <Badge variant={personBalance < 0 ? "destructive" : "secondary"}>
                   {personBalance < 0 ? "Débito" : "Crédito"}
                 </Badge>
               </div>
             )}
           </div>
 
-
           <div>
             <label className="text-2xs uppercase tracking-wider font-medium text-muted-foreground block mb-2">
-              Refeições
+              Refeições Incluídas
             </label>
-            <div className="flex gap-4">
-              {(["cafe", "almoco", "janta"] as MealType[]).map((meal) => (
-                <div key={meal} className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-4 p-2.5 rounded-lg border border-border bg-muted/20">
+              {(["cafe", "almoco", "janta"] as MealType[]).map((m) => (
+                <div key={m} className="flex items-center space-x-2">
                   <Checkbox
-                    id={meal}
-                    checked={currentMeals.includes(meal)}
-                    onCheckedChange={() => toggleMeal(meal)}
+                    id={`meal-${m}`}
+                    checked={selectedMeals.includes(m)}
+                    onCheckedChange={(checked) => {
+                      if (checked) setSelectedMeals([...selectedMeals, m]);
+                      else setSelectedMeals(selectedMeals.filter((x) => x !== m));
+                    }}
                   />
-                  <Label htmlFor={meal} className="text-sm cursor-pointer">
-                    {MEAL_LABELS[meal]}
-                  </Label>
+                  <Label htmlFor={`meal-${m}`} className="text-xs">{MEAL_LABELS[m]}</Label>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
           <div>
             <label className="text-2xs uppercase tracking-wider font-medium text-muted-foreground block mb-1.5">
-              Data Início
+              Data de Início
             </label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                  {startDate ? format(startDate, "dd/MM/yyyy") : "Selecionar..."}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={startDate} onSelect={setStartDate} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </div>
           <div>
             <label className="text-2xs uppercase tracking-wider font-medium text-muted-foreground block mb-1.5">
-              Data Fim
+              Data de Término
             </label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                  {endDate ? format(endDate, "dd/MM/yyyy") : "Selecionar..."}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={endDate} onSelect={setEndDate} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
+            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
           </div>
+          <Button onClick={addPersonToJob} className="w-full gap-2">
+            <Plus className="h-4 w-4" /> Adicionar à Lista
+          </Button>
         </div>
-
-        <Button
-          onClick={addRequest}
-          disabled={!currentPerson || !selectedJob || currentMeals.length === 0 || !startDate || !endDate || !selectedLocation}
-          className="gap-1.5 bg-foreground text-background hover:bg-foreground/90"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Adicionar à Lista
-        </Button>
       </div>
 
-      {/* Requests list */}
-      {jobRequests.length > 0 && (
-        <div className="rounded-xl border border-border overflow-hidden shadow-card">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-muted/50">
-                <th className="text-left px-3 py-2.5 text-2xs uppercase tracking-wider font-medium text-muted-foreground">Pessoa</th>
-                <th className="text-left px-3 py-2.5 text-2xs uppercase tracking-wider font-medium text-muted-foreground">Job</th>
-                <th className="text-left px-3 py-2.5 text-2xs uppercase tracking-wider font-medium text-muted-foreground">Estado</th>
-                <th className="text-left px-3 py-2.5 text-2xs uppercase tracking-wider font-medium text-muted-foreground">Refeições</th>
-                <th className="text-left px-3 py-2.5 text-2xs uppercase tracking-wider font-medium text-muted-foreground">Período</th>
-                <th className="text-right px-3 py-2.5 text-2xs uppercase tracking-wider font-medium text-muted-foreground">Dias</th>
-                <th className="text-right px-3 py-2.5 text-2xs uppercase tracking-wider font-medium text-muted-foreground">Valor (R$)</th>
-                <th className="px-2 py-2.5"></th>
+      <div className="rounded-xl border border-border overflow-x-auto shadow-card">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-muted/50 border-b border-border">
+              <th className="text-left px-4 py-3 text-2xs uppercase tracking-wider font-medium text-muted-foreground">Pessoa</th>
+              <th className="text-left px-4 py-3 text-2xs uppercase tracking-wider font-medium text-muted-foreground">Período</th>
+              <th className="text-left px-4 py-3 text-2xs uppercase tracking-wider font-medium text-muted-foreground">Refeições</th>
+              <th className="text-right px-4 py-3 text-2xs uppercase tracking-wider font-medium text-muted-foreground">Valor Total</th>
+              <th className="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {jobRequests.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="text-center py-10 text-muted-foreground text-sm">
+                  Nenhuma pessoa adicionada a este Job.
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {jobRequests.map((req) => {
-                const person = people.find((p) => p.id === req.personId);
-                const dates = getDatesInRange(req.startDate, req.endDate);
-                const days = dates.length;
-                let total = 0;
-                dates.forEach(date => {
-                  const dayMeals = req.dailyOverrides && req.dailyOverrides[date] !== undefined ? req.dailyOverrides[date] : req.meals;
-                  dayMeals.forEach(m => {
-                    total += getMealValue(m, date, person);
-                  });
-                });
-                
-                const stateLabel = req.location || "—";
-                const isExpanded = expandedRequests.has(req.id);
+            ) : (
+              jobRequests.map((req) => {
+                const total = getDatesInRange(req.startDate, req.endDate).reduce((sum, date) => {
+                  const person = people.find(p => p.id === req.personId);
+                  const dayMeals = req.dailyOverrides?.[date] ?? req.meals;
+                  return sum + dayMeals.reduce((dSum, m) => dSum + getMealValue(m, date, person), 0);
+                }, 0);
 
                 return (
-                  <Fragment key={req.id}>
-                    <tr 
-                      className="hover:bg-muted/30 transition-colors cursor-pointer"
-                      onClick={() => toggleRequest(req.id)}
-                    >
-                      <td className="px-3 py-2 font-medium text-foreground flex items-center gap-2">
-                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        {getPersonName(req.personId)}
-                      </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">{getJobName(req.jobId)}</td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">{stateLabel}</td>
-                      <td className="px-3 py-2">
-                        <div className="flex gap-1 flex-wrap">
-                          {req.meals.map((m) => (
-                            <Badge key={m} variant="secondary" className="text-2xs">{MEAL_LABELS[m]}</Badge>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 tabular-nums text-muted-foreground text-xs">
-                        {req.startDate.split("-").reverse().join("/")} — {req.endDate.split("-").reverse().join("/")}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{days}</td>
-                      <td className="px-3 py-2 text-right tabular-nums font-semibold text-primary">
-                        {total.toFixed(2)}
-                      </td>
-                      <td className="px-2 py-2 text-right">
-                        <button onClick={(e) => { e.stopPropagation(); removeRequest(req.id); }} className="p-1 rounded-md hover:bg-muted transition-colors">
-                          <X className="h-3.5 w-3.5 text-muted-foreground" />
-                        </button>
-                      </td>
-                    </tr>
-                    {isExpanded && (
-                      <tr className="bg-muted/10">
-                        <td colSpan={8} className="px-6 py-4">
-                          <div className="text-sm text-foreground mb-3 font-semibold">Editar dias individualmente:</div>
-                          <div className="rounded-md border border-border overflow-hidden bg-background">
-                            <table className="w-full text-xs">
-                              <thead className="bg-muted/50 border-b border-border">
-                                <tr>
-                                  <th className="text-left px-3 py-2 font-medium text-muted-foreground uppercase tracking-wider text-2xs">Data</th>
-                                  {(["cafe", "almoco", "janta"] as MealType[]).map((meal) => (
-                                    <th key={meal} className="text-left px-3 py-2 font-medium text-muted-foreground uppercase tracking-wider text-2xs">{MEAL_LABELS[meal]}</th>
-                                  ))}
-                                  <th className="text-right px-3 py-2 font-medium text-muted-foreground uppercase tracking-wider text-2xs">Total do Dia</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-border">
-                                {dates.map((date) => {
-                                  const dayMeals = req.dailyOverrides && req.dailyOverrides[date] !== undefined ? req.dailyOverrides[date] : req.meals;
-                                  const isWeekend = new Date(date + "T00:00:00").getDay() === 0 || new Date(date + "T00:00:00").getDay() === 6;
-                                  const dayTotal = dayMeals.reduce((acc, m) => acc + getMealValue(m, date, person), 0);
-                                  return (
-                                    <tr key={date} className="hover:bg-muted/30 transition-colors">
-                                      <td className="px-3 py-2.5 font-medium tabular-nums text-muted-foreground">{date.split("-").reverse().join("/")}</td>
-                                      {(["cafe", "almoco", "janta"] as MealType[]).map((meal) => {
-                                        const isBlockedAlmoco = meal === "almoco" && person?.isRegistered && !isWeekend;
-                                        const mealValue = getMealValue(meal, date, person);
-                                        return (
-                                          <td key={meal} className="px-3 py-2.5">
-                                            <div className="flex items-center gap-2">
-                                              <Checkbox
-                                                id={`req-${req.id}-${date}-${meal}`}
-                                                checked={isBlockedAlmoco ? false : dayMeals.includes(meal)}
-                                                disabled={isBlockedAlmoco}
-                                                onCheckedChange={(checked) => setDailyOverride(req.id, date, meal, checked as boolean)}
-                                                className="h-3.5 w-3.5 rounded-[3px]"
-                                              />
-                                              <Label 
-                                                htmlFor={`req-${req.id}-${date}-${meal}`} 
-                                                className={`text-xs cursor-pointer ${isBlockedAlmoco ? "text-muted-foreground/50" : "text-foreground"}`}
-                                              >
-                                                {isBlockedAlmoco ? "Não Custa" : `R$ ${mealValue.toFixed(2)}`}
-                                              </Label>
-                                            </div>
-                                          </td>
-                                        );
-                                      })}
-                                      <td className="px-3 py-2.5 text-right font-semibold text-primary tabular-nums">R$ {dayTotal.toFixed(2)}</td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
+                  <tr key={req.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 font-semibold text-foreground">{getPersonName(req.personId)}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
+                      {req.startDate.split("-").reverse().join("/")} até {req.endDate.split("-").reverse().join("/")}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1.5 flex-wrap">
+                        {req.meals.map((m) => (
+                          <Badge key={m} variant="outline" className="text-[10px] capitalize font-medium">{MEAL_LABELS[m]}</Badge>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right font-bold tabular-nums text-foreground">
+                      R$ {total.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button variant="ghost" size="icon" onClick={() => onRemoveRequest(req.id)} className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Action buttons - separated */}
-      <div className="flex flex-wrap gap-3">
-        <Button
-          onClick={generateTimeEntries}
-          disabled={!selectedJob || jobRequests.length === 0}
-          className="gap-2 bg-foreground text-background hover:bg-foreground/90"
-        >
-          <ClipboardList className="h-4 w-4" />
-          Registrar no Registro de Horas
-        </Button>
-        <Button
-          onClick={exportXlsx}
-          disabled={!selectedJob || jobRequests.length === 0}
-          variant="outline"
-          className="gap-2"
-        >
-          <Download className="h-4 w-4" />
-          Exportar Relatório .xlsx
-        </Button>
-        <Button
-          onClick={sendEmail}
-          disabled={!selectedJob || jobRequests.length === 0}
-          variant="outline"
-          className="gap-2"
-        >
-          <Mail className="h-4 w-4" />
-          Enviar por E-mail
-        </Button>
+              })
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
