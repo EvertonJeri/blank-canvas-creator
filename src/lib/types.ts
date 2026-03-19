@@ -71,19 +71,8 @@ export const LOCATIONS: { value: LocationType; label: string }[] = [
   { value: "Fora SP", label: "Fora de SP" },
 ];
 
-export const SAMPLE_PEOPLE: Person[] = [
-  { id: "1", name: "Carlos Silva", isRegistered: false },
-  { id: "2", name: "Ana Santos", isRegistered: true },
-  { id: "3", name: "Roberto Lima", isRegistered: false },
-  { id: "4", name: "Maria Oliveira", isRegistered: true },
-  { id: "5", name: "João Ferreira", isRegistered: false },
-];
-
-export const SAMPLE_JOBS: Job[] = [
-  { id: "j1", name: "JOB-001 - Montagem Estrutural" },
-  { id: "j2", name: "JOB-002 - Montagem Elétrica" },
-  { id: "j3", name: "JOB-003 - Montagem Mecânica" },
-];
+export const SAMPLE_PEOPLE: Person[] = [];
+export const SAMPLE_JOBS: Job[] = [];
 
 export const MEAL_LABELS: Record<MealType, string> = {
   cafe: "Café da Manhã",
