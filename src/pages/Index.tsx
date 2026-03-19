@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Clock, Utensils, AlertTriangle, UtensilsCrossed, CreditCard, FileText } from "lucide-react";
 import TimeRegistrationTab from "@/components/TimeRegistrationTab";
@@ -196,7 +198,19 @@ const Index = () => {
                 Registro de horas, solicitação de refeições, controle de alimentação e descontos
               </p>
             </div>
+            <div className="ml-auto flex items-center gap-2">
+              <Button 
+                variant={activePage === "extrato" ? "default" : "outline"}
+                size="sm"
+                className="h-8 gap-2"
+                onClick={() => setActivePage("extrato")}
+              >
+                <FileText className="h-4 w-4" />
+                <span>Ver Extrato Completo</span>
+              </Button>
+            </div>
           </header>
+
           <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 overflow-x-hidden">
             <div className="animate-in fade-in zoom-in-95 duration-200 w-full min-w-0">
               {renderContent()}
