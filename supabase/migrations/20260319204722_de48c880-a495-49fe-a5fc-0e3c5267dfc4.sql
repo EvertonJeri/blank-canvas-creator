@@ -1,0 +1,1 @@
+ALTER TABLE public.people ADD CONSTRAINT people_name_key UNIQUE (name);
