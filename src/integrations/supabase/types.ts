@@ -14,6 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
+<<<<<<< HEAD
       discount_confirmations: {
         Row: {
           confirmed: boolean | null
@@ -262,6 +263,9 @@ export type Database = {
           },
         ]
       }
+=======
+      [_ in never]: never
+>>>>>>> 633658cbbbe2ab942b8a65e5a350dfca66009522
     }
     Views: {
       [_ in never]: never
