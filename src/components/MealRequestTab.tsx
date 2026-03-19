@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Plus, Trash2, AlertCircle, ChevronDown, ChevronRight, CalendarDays } from "lucide-react";
+import { Plus, Trash2, AlertCircle, ChevronDown, ChevronRight, CalendarDays, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -108,6 +108,43 @@ const MealRequestTab = ({
   const getJobName = (id: string) => jobs.find((j) => j.id === id)?.name || "—";
 
   const jobRequests = selectedJob ? requests.filter((r) => r.jobId === selectedJob) : requests;
+
+  const generateTimeEntries = () => {
+    if (!selectedJob) return;
+    
+    const newEntries: TimeEntry[] = [];
+    
+    jobRequests.forEach((req) => {
+      const dates = getDatesInRange(req.startDate, req.endDate);
+      dates.forEach((date) => {
+        const exists = timeEntries.some(
+          (e) => e.personId === req.personId && e.jobId === req.jobId && e.date === date
+        );
+        
+        if (!exists) {
+          newEntries.push({
+            id: crypto.randomUUID(),
+            personId: req.personId,
+            jobId: req.jobId,
+            date,
+            entry1: "",
+            exit1: "",
+            entry2: "",
+            exit2: "",
+            entry3: "",
+            exit3: "",
+          });
+        }
+      });
+    });
+    
+    if (newEntries.length > 0) {
+      onGenerateEntries(newEntries);
+      alert(`${newEntries.length} dias inseridos no Registro de Horas com sucesso!`);
+    } else {
+      alert("Todos os dias desta lista já possuem registro de horas criado!");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -332,6 +369,14 @@ const MealRequestTab = ({
           </tbody>
         </table>
       </div>
+
+      {jobRequests.length > 0 && selectedJob && (
+        <div className="flex justify-end pt-4">
+          <Button onClick={generateTimeEntries} className="gap-2">
+            <Send className="h-4 w-4" /> Enviar para Registro de Horas
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
