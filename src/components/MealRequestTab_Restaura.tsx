@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,7 +203,9 @@ const MealRequestTab = ({
                     <td className="px-4 py-3">
                       <div className="flex gap-1 flex-wrap">
                         {(req.meals || []).map(m => (
-                          <Badge key={m} variant="outline" className="text-[10px] capitalize font-normal">{MEAL_LABELS[m]}</Badge>
+                          <span key={m} className="px-2 py-0.5 rounded-full border border-border text-[10px] capitalize font-medium bg-muted/50 text-foreground">
+                            {String(MEAL_LABELS[m] || m)}
+                          </span>
                         ))}
                       </div>
                     </td>

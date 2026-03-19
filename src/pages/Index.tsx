@@ -21,7 +21,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import TimeRegistrationTab from "@/components/TimeRegistrationTab";
-import MealRequestTab from "@/components/MealRequestTab";
+import MealRequestTab from "@/components/MealRequestTab_Restaura";
 import FoodControlTab from "@/components/FoodControlTab";
 import DiscountsTab from "@/components/DiscountsTab";
 import PaymentTab from "@/components/PaymentTab";
