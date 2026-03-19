@@ -127,7 +127,7 @@ const TimeRegistrationTab = ({ entries, setEntries, people, jobs, onUpdateEntry,
           <SearchableSelect
             options={people.map(p => ({ 
               value: p.id, 
-              label: `${p.name} ${p.isRegistered ? "(Registrado)" : ""}` 
+              label: `${p.name} ${p.isRegistered ? "(Registrado)" : "(Não Registrado)"}` 
             }))}
             value={selectedPerson}
             onValueChange={setSelectedPerson}

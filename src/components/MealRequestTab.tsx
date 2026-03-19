@@ -127,7 +127,7 @@ const MealRequestTab = ({
             <SearchableSelect
               options={people.map(p => ({ 
                 value: p.id, 
-                label: `${p.name} ${p.isRegistered ? "(Registrado)" : ""}` 
+                label: `${p.name} ${p.isRegistered ? "(Registrado)" : "(Não Registrado)"}` 
               }))}
               value={currentPerson}
               onValueChange={setCurrentPerson}
