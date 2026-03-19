@@ -71,6 +71,9 @@ const DiscountsTab = ({
         if (!entry) return;
         const hasHours = calcTotalMinutes(entry) > 0;
 
+        // Use daily overrides if they exist for this date, otherwise use original meals
+        const dayMeals = req.dailyOverrides?.[date] ?? req.meals;
+
         // Check food control overrides
         const fc = foodControl.find(
           (f) => f.personId === req.personId && f.jobId === req.jobId && f.date === date
@@ -87,18 +90,18 @@ const DiscountsTab = ({
         const refJanta = getMealValue("janta", date, person);
 
         if (!hasHours) {
-          // Falta total - desconta tudo que foi solicitado
-          if (req.meals.includes("cafe")) discountCafe = refCafe;
-          if (req.meals.includes("almoco")) discountAlmoco = refAlmoco;
-          if (req.meals.includes("janta")) discountJanta = refJanta;
+          // Falta total - desconta tudo que foi solicitado NESSE DIA
+          if (dayMeals.includes("cafe")) discountCafe = refCafe;
+          if (dayMeals.includes("almoco")) discountAlmoco = refAlmoco;
+          if (dayMeals.includes("janta")) discountJanta = refJanta;
           reason = "Falta - sem registro de horas";
         } else if (entry) {
           // Partial - check time-based rules
           const firstEntry = getFirstEntryTime(entry);
           if (firstEntry) {
             const [eh] = firstEntry.split(":").map(Number);
-            // If entered after 8:00 and cafe was requested, discount cafe
-            if (req.meals.includes("cafe") && eh > 8) {
+            // If entered after 8:00 and cafe was requested for this day, discount cafe
+            if (dayMeals.includes("cafe") && eh > 8) {
               discountCafe = refCafe;
               reason = `Entrada às ${firstEntry} - café não utilizado`;
             }
@@ -106,15 +109,16 @@ const DiscountsTab = ({
         }
 
         // Apply food control overrides: if fc says "not used", it's a discount
+        // Only apply discount if the meal was actually in the day's meal list
         if (fc) {
-          if (req.meals.includes("cafe") && !fc.usedCafe) discountCafe = refCafe;
-          else if (req.meals.includes("cafe") && fc.usedCafe) discountCafe = 0;
+          if (dayMeals.includes("cafe") && !fc.usedCafe) discountCafe = refCafe;
+          else if (dayMeals.includes("cafe") && fc.usedCafe) discountCafe = 0;
 
-          if (req.meals.includes("almoco") && !fc.usedAlmoco) discountAlmoco = refAlmoco;
-          else if (req.meals.includes("almoco") && fc.usedAlmoco) discountAlmoco = 0;
+          if (dayMeals.includes("almoco") && !fc.usedAlmoco) discountAlmoco = refAlmoco;
+          else if (dayMeals.includes("almoco") && fc.usedAlmoco) discountAlmoco = 0;
 
-          if (req.meals.includes("janta") && !fc.usedJanta) discountJanta = refJanta;
-          else if (req.meals.includes("janta") && fc.usedJanta) discountJanta = 0;
+          if (dayMeals.includes("janta") && !fc.usedJanta) discountJanta = refJanta;
+          else if (dayMeals.includes("janta") && fc.usedJanta) discountJanta = 0;
 
           if (!reason) reason = "Ajuste via controle de alimentação";
         }
@@ -127,7 +131,7 @@ const DiscountsTab = ({
     });
 
     return rows;
-  }, [requests, timeEntries, foodControl]);
+  }, [requests, timeEntries, foodControl, people]);
 
   // Group by person
   const groupedByPerson = useMemo(() => {
